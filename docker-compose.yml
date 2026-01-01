@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:1.34.3
+    container_name: vaultwarden
+    restart: unless-stopped
+    volumes:
+      - vaultwarden:/data
+    ports:
+      - "80:80"
+    environment:
+      - WEBSOCKET_ENABLED=true
+
+  backup:
+    build: .
+    container_name: vaultwarden-backup
+    restart: unless-stopped
+    depends_on:
+      - vaultwarden
+    volumes:
+      - vaultwarden:/data:ro
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - DB_PATH=${DB_PATH:-/data/db.sqlite3}
+      - BACKUP_CRON=${BACKUP_CRON:-0 * * * *}
+
+volumes:
+  vaultwarden:
