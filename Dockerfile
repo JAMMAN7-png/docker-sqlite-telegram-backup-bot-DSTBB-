@@ -7,7 +7,7 @@ COPY package.json ./
 COPY tsconfig.json ./
 
 # Install dependencies
-RUN bun install --production
+RUN bun install
 
 # Copy source code
 COPY src ./src

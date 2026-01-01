@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, InputFile } from "grammy";
 import { CronJob } from "cron";
 import { createHash } from "crypto";
 import { readFileSync, statSync } from "fs";
@@ -21,8 +21,12 @@ if (!TELEGRAM_CHAT_ID) {
   process.exit(1);
 }
 
+// Type-safe constants after validation
+const BOT_TOKEN: string = TELEGRAM_BOT_TOKEN;
+const CHAT_ID: string = TELEGRAM_CHAT_ID;
+
 // Initialize bot
-const bot = new Bot(TELEGRAM_BOT_TOKEN);
+const bot = new Bot(BOT_TOKEN);
 
 // Sequence number for backups
 let sequenceNumber = 0;
@@ -92,9 +96,9 @@ async function performBackup() {
     ].join("\n");
 
     // Send file to Telegram
-    console.log(`Sending backup to Telegram (chat: ${TELEGRAM_CHAT_ID})...`);
+    console.log(`Sending backup to Telegram (chat: ${CHAT_ID})...`);
     
-    await bot.api.sendDocument(TELEGRAM_CHAT_ID, new URL(`file://${DB_PATH}`), {
+    await bot.api.sendDocument(CHAT_ID, new InputFile(DB_PATH), {
       caption: caption,
     });
 
