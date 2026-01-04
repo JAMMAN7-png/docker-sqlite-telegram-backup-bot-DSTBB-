@@ -53,12 +53,20 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Backup type for caption differentiation
+ */
+type BackupType = "health_check" | "scheduled";
+
+/**
  * Perform backup and send to Telegram
  */
-async function performBackup() {
+async function performBackup(type: BackupType = "scheduled") {
   try {
-    console.log(`[${new Date().toISOString()}] Starting backup...`);
-    
+    const isHealthCheck = type === "health_check";
+    const logPrefix = isHealthCheck ? "Health check" : "Scheduled backup";
+
+    console.log(`[${new Date().toISOString()}] Starting ${logPrefix.toLowerCase()}...`);
+
     // Check if file exists
     try {
       statSync(DB_PATH);
@@ -84,25 +92,35 @@ async function performBackup() {
     // Create timestamp
     const timestamp = new Date().toISOString();
 
-    // Create caption
+    // Create caption based on backup type
+    const title = isHealthCheck
+      ? `✅ Health Check Backup`
+      : `📦 Scheduled Backup`;
+
+    const statusLine = isHealthCheck
+      ? `🟢 Status: Bot started successfully`
+      : `🔄 Status: Scheduled backup completed`;
+
     const caption = [
-      `📦 Database Backup`,
+      title,
       ``,
+      statusLine,
       `🕐 Timestamp: ${timestamp}`,
       `📊 Size: ${formattedSize}`,
-      `🔒 SHA256: ${sha256Hash}`,
+      `🔒 SHA256: ${sha256Hash.substring(0, 16)}...`,
       `💻 Hostname: ${hostName}`,
       `#️⃣ Sequence: ${sequenceNumber}`,
+      `⏰ Schedule: ${BACKUP_CRON}`,
     ].join("\n");
 
     // Send file to Telegram
-    console.log(`Sending backup to Telegram (chat: ${CHAT_ID})...`);
-    
+    console.log(`Sending ${logPrefix.toLowerCase()} to Telegram (chat: ${CHAT_ID})...`);
+
     await bot.api.sendDocument(CHAT_ID, new InputFile(DB_PATH), {
       caption: caption,
     });
 
-    console.log(`[${new Date().toISOString()}] Backup completed successfully (sequence: ${sequenceNumber})`);
+    console.log(`[${new Date().toISOString()}] ${logPrefix} completed successfully (sequence: ${sequenceNumber})`);
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Backup failed:`, error);
   }
@@ -120,10 +138,10 @@ async function main() {
   console.log(`Hostname: ${hostname()}`);
   console.log("=".repeat(60));
 
-  // Set up cron job
+  // Set up cron job for scheduled backups
   const job = new CronJob(
     BACKUP_CRON,
-    performBackup,
+    () => performBackup("scheduled"),
     null,
     true,
     "UTC"
@@ -133,9 +151,9 @@ async function main() {
   console.log(`Next backup at: ${job.nextDate().toISO()}`);
   console.log("Bot is running. Press Ctrl+C to stop.");
 
-  // Perform initial backup immediately
-  console.log("\nPerforming initial backup...");
-  await performBackup();
+  // Perform health check backup immediately on startup
+  console.log("\nPerforming health check backup...");
+  await performBackup("health_check");
 
   // Keep the process alive
   process.on("SIGINT", () => {
